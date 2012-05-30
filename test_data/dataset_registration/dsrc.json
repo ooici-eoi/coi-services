@@ -1,0 +1,35 @@
+{
+"lcstate": "DRAFT_PRIVATE", 
+"type": "", 
+"description": "", 
+"connection_params": {}, 
+"ts_updated": "", 
+"type_": "DataSource", 
+"contact": {
+"city": "Testtown", 
+"name": "Testy McTesterson", 
+"country": "USA", 
+"variables": [
+{
+"name": "", 
+"value": ""
+}
+], 
+"state": "ZZ", 
+"phone": "012-345-6789", 
+"type_": "ContactInformation", 
+"address": "123 Testing St", 
+"postalcode": "01234", 
+"email": "testy.mctesterson@testyinc.com"
+}, 
+"ts_created": "", 
+"institution": {
+"website": "http://www.testyinc.com", 
+"phone": "012-345-6789", 
+"type_": "Institution", 
+"name": "Testy McTesterson, Inc", 
+"email": "support@testyinc.com"
+}, 
+"protocol_type": "", 
+"name": ""
+}

@@ -1,0 +1,37 @@
+{
+"lcstate": "DRAFT_PRIVATE", 
+"update_description": {
+"last_update_timestamp": "None", 
+"last_signature": "", 
+"type_": "UpdateDescription", 
+"last_update_result": "None", 
+"parameters": {}
+}, 
+"description": "", 
+"dataset_description": {
+"type_": "DatasetDescription", 
+"data_sampling": 1, 
+"parameters": {}
+}, 
+"ts_updated": "", 
+"type_": "ExternalDataset", 
+"contact": {
+"city": "", 
+"name": "", 
+"country": "", 
+"variables": [
+{
+"name": "", 
+"value": ""
+}
+], 
+"state": "", 
+"phone": "", 
+"type_": "ContactInformation", 
+"address": "", 
+"postalcode": "", 
+"email": ""
+}, 
+"ts_created": "", 
+"name": ""
+}
