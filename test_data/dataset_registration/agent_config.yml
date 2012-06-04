@@ -1,0 +1,14 @@
+driver_config :
+  dvr_mod : ion.agents.data.handlers.base_data_handler
+  dvr_cls : DummyDataHandler
+  dh_cfg :
+    TESTING : True
+    max_records : 4
+    ## CONFIGURED DURING dreg.make_agent_instance
+    # stream_id : ''
+    # data_producer_id : ''
+    # taxonomy : ''
+## CONFIGURED DURING dreg.make_agent_instance OR dams.start_external_dataset_agent_instance
+# stream_config : {}
+agent : {resource_id : ''} # resource_id filled during creation
+test_mode : True

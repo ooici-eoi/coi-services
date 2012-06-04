@@ -12,6 +12,7 @@ from pyon.core.bootstrap import obj_registry, IonObject
 from pyon.core.object import ion_serializer, IonObjectDeserializer
 from pyon.ion.resource import PRED, RT
 from pyon.core.exception import NotFound, BadRequest
+from pyon.util.containers import get_safe
 
 from interface.objects import DataSource, DataSourceModel, ExternalDataProvider, ExternalDataset, ExternalDatasetModel,ExternalDatasetAgent, ExternalDatasetAgentInstance, DataProduct
 
@@ -19,7 +20,7 @@ from interface.services.sa.idata_acquisition_management_service import DataAcqui
 from interface.services.sa.idata_product_management_service import DataProductManagementServiceClient
 from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
 
-import json
+import yaml
 from pyon.util.context import LocalContextMixin
 
 ion_deserializer=IonObjectDeserializer(obj_registry=obj_registry)
@@ -30,23 +31,23 @@ class DatasetRegistration(object):
         self._dams_cli = DataAcquisitionManagementServiceClient()
         self._dpms_cli = DataProductManagementServiceClient()
         self._rr_cli = ResourceRegistryServiceClient()
-        self.outfile = 'test_data/dataset_registration/test_out_obj.json'
+        self.outfile = 'test_data/dataset_registration/test_out_obj.yml'
         self.object_dict = {}
 
-    def _write_json(self, filepath=None, ser_obj=None):
+    def _write_yaml(self, filepath=None, ser_obj=None):
         filepath = filepath or self.outfile
         log.debug('Serialized object: {0}'.format(ser_obj))
         with open(filepath,'w') as f:
             log.debug('Write the object to file \'{0}\''.format(filepath))
-            json.dump(ser_obj, f, indent=2)
+            yaml.dump(ser_obj, f, indent=2)
 
-    def _load_json(self, filepath=None):
+    def _load_yaml(self, filepath=None):
         filepath = filepath or self.outfile
 
         obj_read = None
         with open(filepath,'r') as f:
             log.debug('Read the object from file \'{0}\''.format(filepath))
-            obj_read = json.load(f)
+            obj_read = yaml.load(f)
 
         if obj_read is None:
             raise Exception('obj_read is None')
@@ -58,10 +59,10 @@ class DatasetRegistration(object):
         ser_obj = ion_serializer.serialize(ion_obj)
         return ser_obj
 
-    def _ionize(self, json_obj=None):
-        log.debug('Ionize object: {0}'.format(json_obj))
+    def _ionize(self, yaml_obj=None):
+        log.debug('Ionize object: {0}'.format(yaml_obj))
         try:
-            ion_obj = ion_deserializer.deserialize(json_obj)
+            ion_obj = ion_deserializer.deserialize(yaml_obj)
             log.debug('Resulting object: {0}'.format(ion_obj))
         except NotFound as nf:
             ion_obj = None
@@ -95,7 +96,6 @@ class DatasetRegistration(object):
             raise Exception('Must provide an DataProduct')
 
 
-
     def write_dsreg(self, filepath=None, dset_obj=None, dsrc_obj=None, edp_obj=None):
         # TODO: Make this work for passed ID's too --> read object from registry and then serialize
         # TODO: Have the ability to write each object to a separate file
@@ -110,7 +110,7 @@ class DatasetRegistration(object):
         dout['dsrc'] = self._serialize(dsrc_obj)
         dout['edp'] = self._serialize(edp_obj)
 
-        self._write_json(filepath, dout)
+        self._write_yaml(filepath, dout)
 
     def _unique_object_helper(self, ion_obj):
         # Ensure the passed object is an IonObject
@@ -149,8 +149,8 @@ class DatasetRegistration(object):
             log.debug('Found {0} file'.format(key))
             #TODO, load and parse the file, return the object
             fp = f_root + dobj['{0}_file'.format(key)]
-            json_obj = self._load_json(fp)
-            ion_obj = self._ionize(json_obj)
+            yaml_obj = self._load_yaml(fp)
+            ion_obj = self._ionize(yaml_obj)
         elif not key is 'dset' and '{0}_id'.format(key) in dobj:
             log.debug('Found {0} resource_id'.format(key))
             # TODO: Read from registry
@@ -164,8 +164,8 @@ class DatasetRegistration(object):
         if filepath is None:
             raise Exception('Must provide an input file path')
 
-        # Get the dict obj from json
-        dobj=self._load_json(filepath)
+        # Get the dict obj from yaml
+        dobj=self._load_yaml(filepath)
 
         # Find the dset, dsrc, dsrc_mdl, edp members
         dset_obj = self._parse_helper(dobj, 'dset', 'ExternalDataset', '')
@@ -286,6 +286,8 @@ class DatasetRegistration(object):
                 raise br
 
         log.info('Stream Id: {0}'.format(stream_id))
+        self.object_dict['stream_id'] = stream_id
+        self.object_dict['dproducer_id'] = dproducer_id
 
         # TODO: Results in:
         # IonException: -1 - The stream is associated with more than one stream definition!
@@ -293,18 +295,61 @@ class DatasetRegistration(object):
 
         return dset_id, eda_id, dproducer_id, stream_id
 
-    def make_agent_instance(self, name, driver_config, agent_config):
-        eda_inst_obj = ExternalDatasetAgentInstance(name='dummy_eda_inst', dataset_driver_config=driver_config, dataset_agent_config=agent_config)
+    def make_agent_instance(self, name, agent_config, taxonomy):
+        agt_cfg = None
+        if isinstance(agent_config, str):
+            log.error('agent_config a str: {0}'.format(agent_config))
+            with open(agent_config, 'r') as f:
+                agt_cfg = self._deorder_dict(yaml.load(f))
+        else:
+            agt_cfg = agent_config
+
+        if agt_cfg is None:
+            raise Exception('\'agent_config\' must be either a valid configuration dict, or a path to a valid yaml file containing the configuration')
+
+        log.warn('Agent Config: {0}'.format(agt_cfg))
+
+        tx = None
+        if isinstance(taxonomy, str):
+            log.error('taxonomy is a str: {0}'.format(taxonomy))
+            with open(taxonomy, 'r') as f:
+                tx = f.read()
+        else:
+            tx = taxonomy
+
+        if tx is None:
+            raise Exception('\'tx\' must be either a valid taxonomy dict, or a path to a valid yaml file containing the taxonomy')
+
+        log.warn('Taxonomy: {0}'.format(tx))
+
+        if get_safe(agt_cfg, 'driver_config.dh_cfg.stream_id') is None:
+            agt_cfg['driver_config']['dh_cfg']['stream_id'] = self.object_dict['stream_id']
+        if get_safe(agt_cfg, 'driver_config.dh_cfg.dproducer_id') is None:
+            agt_cfg['driver_config']['dh_cfg']['dproducer_id'] = self.object_dict['dproducer_id']
+        if get_safe(agt_cfg, 'driver_config.dh_cfg.taxonomy') is None:
+            agt_cfg['driver_config']['dh_cfg']['taxonomy'] = tx
+
+        eda_inst_obj = ExternalDatasetAgentInstance(name=name, dataset_driver_config=agt_cfg['driver_config'], dataset_agent_config=agt_cfg)
 
         eda_id = self.object_dict['eda'][0]
         dset_id = self.object_dict['dset'][0]
 
         eda_inst_id = self._dams_cli.create_external_dataset_agent_instance(eda_inst_obj, eda_id, dset_id)
-        eda_inst_obj = self._rr_cli.read(eda_inst_id)
+#        eda_inst_obj = self._rr_cli.read(eda_inst_id)
 
-        pid = self._dams_cli.start_external_dataset_agent_instance(eda_inst_id)
+        return eda_inst_id, eda_inst_obj
 
-        return (eda_inst_id, eda_inst_obj), pid
+    def _deorder_dict(self, odict):
+        from pyon.core.object import walk
+        def o2d(obj):
+            from collections import OrderedDict
+            if isinstance(obj, OrderedDict):
+                obj=dict(obj)
+            return obj
+
+        return walk(odict, o2d)
+
+
 
 class FakeProcess(LocalContextMixin):
     """
@@ -314,6 +359,15 @@ class FakeProcess(LocalContextMixin):
     id=''
     process_type = ''
 
+def json_to_yml(file):
+    import simplejson as json
+    with open(file,'r') as f:
+        jobj = json.load(f)
+        print jobj
+
+    with open(file.replace('.json','.yml'), 'w') as f:
+        f.write(yaml.dump(jobj))
+
 
 def test_this():
     from pyon.agent.agent import ResourceAgentClient
@@ -322,7 +376,7 @@ def test_this():
 #    from examples.registration_utility import DatasetRegistration, FakeProcess
 
     dreg=DatasetRegistration()
-    objs=dreg.parse_dsreg('test_data/dataset_registration/dsreg_file_refs.json')
+    objs=dreg.parse_dsreg('test_data/dataset_registration/dsreg_file_refs.yml')
     dset_id, eda_id, dproducer_id, stream_id = dreg.register_dataset(*objs)
 
     # Augment the eda_inst in objs with particulars, in this case Dummy

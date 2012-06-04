@@ -1,0 +1,28 @@
+contact:
+  address: ''
+  city: ''
+  country: ''
+  email: ''
+  name: ''
+  phone: ''
+  postalcode: ''
+  state: ''
+  type_: ContactInformation
+  variables:
+  - {name: '', value: ''}
+dataset_description:
+  data_sampling: 1
+  parameters: {}
+  type_: DatasetDescription
+description: ''
+lcstate: DRAFT_PRIVATE
+name: ''
+ts_created: ''
+ts_updated: ''
+type_: ExternalDataset
+update_description:
+  last_signature: ''
+  last_update_result: None
+  last_update_timestamp: None
+  parameters: {}
+  type_: UpdateDescription

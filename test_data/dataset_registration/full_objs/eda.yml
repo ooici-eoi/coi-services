@@ -1,0 +1,12 @@
+agent_version: ''
+conection_method: ''
+description: ''
+event_publisher_origin: ''
+handler_class: ExternalDatasetAgent
+handler_module: ion.agents.data.external_dataset_agent
+lcstate: DRAFT_PRIVATE
+name: eda
+time_source: ''
+ts_created: ''
+ts_updated: ''
+type_: ExternalDatasetAgent

@@ -1,0 +1,6 @@
+data_handler_class: ''
+data_handler_module: ''
+description: ''
+model: ''
+name: test_dsrc_mdl
+type_: DataSourceModel

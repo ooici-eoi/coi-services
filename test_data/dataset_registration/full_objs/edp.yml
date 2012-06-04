@@ -1,0 +1,19 @@
+contact:
+  address: ''
+  city: ''
+  country: ''
+  email: ''
+  name: ''
+  phone: ''
+  postalcode: ''
+  state: ''
+  type_: ContactInformation
+  variables:
+  - {name: '', value: ''}
+description: ''
+institution: {email: '', name: '', phone: '', type_: Institution, website: ''}
+lcstate: DRAFT_PRIVATE
+name: ''
+ts_created: ''
+ts_updated: ''
+type_: ExternalDataProvider

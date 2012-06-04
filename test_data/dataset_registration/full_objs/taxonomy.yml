@@ -1,0 +1,11 @@
+taxonomy :
+description: ''
+lcstate: DRAFT_PRIVATE
+map:
+  0:
+  - data
+  - [external data, data]
+name: ''
+ts_created: ''
+ts_updated: ''
+type_: Taxonomy

@@ -1,0 +1,20 @@
+connection_params: {}
+contact:
+  address: 123 Testing St
+  city: Testtown
+  country: USA
+  email: testy.mctesterson@testyinc.com
+  name: Testy McTesterson
+  phone: 012-345-6789
+  postalcode: '01234'
+  state: ZZ
+  type_: ContactInformation
+  variables:
+  - {name: '', value: ''}
+description: ''
+institution: {email: support@testyinc.com, name: 'Testy McTesterson, Inc', phone: 012-345-6789,
+  type_: Institution, website: 'http://www.testyinc.com'}
+name: test_datasource
+protocol_type: ''
+type: ''
+type_: DataSource
