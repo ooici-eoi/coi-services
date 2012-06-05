@@ -31,18 +31,16 @@ class DatasetRegistration(object):
         self._dams_cli = DataAcquisitionManagementServiceClient()
         self._dpms_cli = DataProductManagementServiceClient()
         self._rr_cli = ResourceRegistryServiceClient()
-        self.outfile = 'test_data/dataset_registration/test_out_obj.yml'
-        self.object_dict = {}
 
     def _write_yaml(self, filepath=None, ser_obj=None):
-        filepath = filepath or self.outfile
+        filepath = filepath
         log.debug('Serialized object: {0}'.format(ser_obj))
         with open(filepath,'w') as f:
             log.debug('Write the object to file \'{0}\''.format(filepath))
             yaml.dump(ser_obj, f, indent=2)
 
     def _load_yaml(self, filepath=None):
-        filepath = filepath or self.outfile
+        filepath = filepath
 
         obj_read = None
         with open(filepath,'r') as f:
@@ -135,7 +133,7 @@ class DatasetRegistration(object):
 
         return ion_obj
 
-    def _parse_helper(self, dobj, key, obj_name, append=None):
+    def _parse_helper(self, dobj, key, obj_name, read_to_string=False, ionize=True, append=None):
         if append is None:
             append = ' or \'{0}_id\''.format(key)
 
@@ -146,15 +144,24 @@ class DatasetRegistration(object):
             f_root = ''
             if 'file_root' in dobj:
                 f_root = dobj['file_root']
+                if not f_root.endswith('/'):
+                    f_root += '/'
             log.debug('Found {0} file'.format(key))
             #TODO, load and parse the file, return the object
             fp = f_root + dobj['{0}_file'.format(key)]
-            yaml_obj = self._load_yaml(fp)
-            ion_obj = self._ionize(yaml_obj)
+            if read_to_string:
+                with open(fp,'r') as f:
+                    ion_obj = f.read()
+            else:
+                yaml_obj = self._load_yaml(fp)
+                if ionize:
+                    ion_obj = self._ionize(yaml_obj)
+                else:
+                    ion_obj = yaml_obj
         elif not key is 'dset' and '{0}_id'.format(key) in dobj:
             log.debug('Found {0} resource_id'.format(key))
             # TODO: Read from registry
-            ion_obj = None
+            ion_obj = self._rr_cli.read(dobj['{0}_id'.format(key)])
         else:
             raise Exception('{0} missing from registration file: key=\'{1}\'{2}'.format(obj_name,key,append))
 
@@ -167,7 +174,7 @@ class DatasetRegistration(object):
         # Get the dict obj from yaml
         dobj=self._load_yaml(filepath)
 
-        # Find the dset, dsrc, dsrc_mdl, edp members
+        # Parse the various objects
         dset_obj = self._parse_helper(dobj, 'dset', 'ExternalDataset', '')
 
         dset_mdl_obj = self._parse_helper(dobj, 'dset_mdl', 'ExternalDatasetModel')
@@ -180,12 +187,14 @@ class DatasetRegistration(object):
 
         eda_obj = self._parse_helper(dobj, 'eda', 'ExternalDataAgent')
 
-#        eda_inst_obj = self._parse_helper(dobj, 'eda_inst', 'ExternalDataAgentInstance')
-
         dprod_obj = self._parse_helper(dobj, 'dprod', 'DataProduct')
 
+        # Parse the agent_config and taxonomy (straight read)
+        agent_config = self._parse_helper(dobj, 'agent_config', 'agent_config', ionize=False)
 
-        return dset_obj, dset_mdl_obj, dsrc_obj, dsrc_mdl_obj, edp_obj, eda_obj, dprod_obj #eda_inst_obj, dprod_obj
+        taxonomy = self._parse_helper(dobj, 'taxonomy', 'taxonomy', read_to_string=True)
+
+        return dset_obj, dset_mdl_obj, dsrc_obj, dsrc_mdl_obj, edp_obj, eda_obj, dprod_obj, agent_config, taxonomy
 
     def _conditional_create(self, create_method, ion_obj, *args):
 
@@ -202,18 +211,28 @@ class DatasetRegistration(object):
 
         return id, preexisting
 
-    def register_dataset(self, dset_obj=None, dset_mdl_obj=None, dsrc_obj=None, dsrc_mdl_obj=None, edp_obj=None, eda_obj=None, dprod_obj=None): #eda_inst_obj=None, dprod_obj=None):
-#        self._verify_objs(dset_obj, dsrc_obj, edp_obj)
+    def register_dataset(self, eda_inst_name, filepath=None):
+        """
+        Register the dataset indicated by the various objects.
+
+        Each object is created conditionally.  If an object of the same type_ and with the same name exists in the RR, it is used instead of creating a new object
+
+        Makes appropriate object associations (via DAMS)
+
+        """
+        dset_obj, dset_mdl_obj, dsrc_obj, dsrc_mdl_obj, edp_obj, eda_obj, dprod_obj, agent_config, taxonomy = self.parse_dsreg(filepath)
+
+        obj_dict = {}
 
         ## Run everything through DAMS
         dset_mdl_id, preexisting = self._conditional_create(self._dams_cli.create_external_dataset_model, dset_mdl_obj)
         log.info('ExternalDatasetModel Id: <preexisting={0}> {1}'.format(preexisting, dset_mdl_id))
         #        dset_id = self._dams_cli.create_external_dataset(external_dataset=dset_obj)
-        self.object_dict['dset_mdl'] = (dset_mdl_id,dset_mdl_obj)
+        obj_dict['dset_mdl'] = (dset_mdl_id,dset_mdl_obj)
 
         dset_id, preexisting = self._conditional_create(self._dams_cli.create_external_dataset, dset_obj, dset_mdl_id)
         log.info('ExternalDataset Id: <preexisting={0}> {1}'.format(preexisting, dset_id))
-        self.object_dict['dset'] = (dset_id,dset_obj)
+        obj_dict['dset'] = (dset_id,dset_obj)
         if not preexisting:
             # Register the ExternalDataset
             dproducer_id = self._dams_cli.register_external_data_set(external_dataset_id=dset_id)
@@ -228,26 +247,26 @@ class DatasetRegistration(object):
 
         dsrc_id, preexisting = self._conditional_create(self._dams_cli.create_data_source, dsrc_obj)
         log.info('DataSource Id: <preexisting={0}> {1}'.format(preexisting, dsrc_id))
-        self.object_dict['dsrc'] = (dsrc_id,dsrc_obj)
+        obj_dict['dsrc'] = (dsrc_id,dsrc_obj)
 
         dsrc_mdl_id, preexisting = self._conditional_create(self._dams_cli.create_data_source_model, dsrc_mdl_obj)
         log.info('DataSourceModel Id: <preexisting={0}> {1}'.format(preexisting, dsrc_mdl_id))
-        self.object_dict['dsrc_mdl'] = (dsrc_mdl_id,dsrc_mdl_obj)
+        obj_dict['dsrc_mdl'] = (dsrc_mdl_id,dsrc_mdl_obj)
 
         edp_id, preexisting = self._conditional_create(self._dams_cli.create_external_data_provider, edp_obj)
         log.info('ExternalDataProvider Id: <preexisting={0}> {1}'.format(preexisting, edp_id))
-        self.object_dict['edp'] = (edp_id,edp_obj)
+        obj_dict['edp'] = (edp_id,edp_obj)
 
         eda_id, preexisting = self._conditional_create(self._dams_cli.create_external_dataset_agent, eda_obj, dset_mdl_id)
         log.info('ExternalDatasetAgent Id: <preexisting={0}> {1}'.format(preexisting, eda_id))
-        self.object_dict['eda'] = (eda_id,eda_obj)
+        obj_dict['eda'] = (eda_id,eda_obj)
 
 #        eda_inst_id = self._conditional_create(self._dams_cli.create_external_dataset_agent_instance, eda_inst_obj, eda_id, dset_id)
 #        log.info('ExternalDatasetAgentInstance Id: {0}'.format(eda_inst_id))
 
         dprod_id, preexisting = self._conditional_create(self._dpms_cli.create_data_product, dprod_obj)
         log.info('DataProduct Id: <preexisting={0}> {1}'.format(preexisting, dprod_id))
-        self.object_dict['dprod'] = (dprod_id,dprod_obj)
+        obj_dict['dprod'] = (dprod_id,dprod_obj)
 
         # Create associations - will throw 400 errors if they already exist - catch and ignore
         try:
@@ -286,54 +305,35 @@ class DatasetRegistration(object):
                 raise br
 
         log.info('Stream Id: {0}'.format(stream_id))
-        self.object_dict['stream_id'] = stream_id
-        self.object_dict['dproducer_id'] = dproducer_id
+        obj_dict['stream_id'] = stream_id
+        obj_dict['dproducer_id'] = dproducer_id
 
-        # TODO: Results in:
-        # IonException: -1 - The stream is associated with more than one stream definition!
-#        self._dpms_cli.activate_data_product_persistence(data_product_id=dprod_id, persist_data=True, persist_metadata=True)
+        eda_inst_id = self.make_agent_instance(eda_inst_name, agent_config, taxonomy, obj_dict)
+        obj_dict['eda_inst_id'] = eda_inst_id
 
-        return dset_id, eda_id, dproducer_id, stream_id
+        return obj_dict
 
-    def make_agent_instance(self, name, agent_config, taxonomy):
-        agt_cfg = None
-        if isinstance(agent_config, str):
-            log.error('agent_config a str: {0}'.format(agent_config))
-            with open(agent_config, 'r') as f:
-                agt_cfg = self._deorder_dict(yaml.load(f))
-        else:
-            agt_cfg = agent_config
+    def make_agent_instance(self, name, agent_config, taxonomy, obj_dict):
+        """
+        Creates an ExternalDatasetAgentInstance with the given agent_config & taxonomy
 
-        if agt_cfg is None:
-            raise Exception('\'agent_config\' must be either a valid configuration dict, or a path to a valid yaml file containing the configuration')
 
-        tx = None
-        if isinstance(taxonomy, str):
-            log.error('taxonomy is a str: {0}'.format(taxonomy))
-            with open(taxonomy, 'r') as f:
-                tx = f.read()
-        else:
-            tx = taxonomy
+        """
+        if get_safe(agent_config, 'driver_config.dh_cfg.stream_id') is None:
+            agent_config['driver_config']['dh_cfg']['stream_id'] = obj_dict['stream_id']
+        if get_safe(agent_config, 'driver_config.dh_cfg.dproducer_id') is None:
+            agent_config['driver_config']['dh_cfg']['dproducer_id'] = obj_dict['dproducer_id']
+        if get_safe(agent_config, 'driver_config.dh_cfg.taxonomy') is None:
+            agent_config['driver_config']['dh_cfg']['taxonomy'] = taxonomy
 
-        if tx is None:
-            raise Exception('\'tx\' must be either a valid taxonomy dict, or a path to a valid yaml file containing the taxonomy')
+        eda_inst_obj = ExternalDatasetAgentInstance(name=name, dataset_driver_config=agent_config['driver_config'], dataset_agent_config=agent_config)
 
-        if get_safe(agt_cfg, 'driver_config.dh_cfg.stream_id') is None:
-            agt_cfg['driver_config']['dh_cfg']['stream_id'] = self.object_dict['stream_id']
-        if get_safe(agt_cfg, 'driver_config.dh_cfg.dproducer_id') is None:
-            agt_cfg['driver_config']['dh_cfg']['dproducer_id'] = self.object_dict['dproducer_id']
-        if get_safe(agt_cfg, 'driver_config.dh_cfg.taxonomy') is None:
-            agt_cfg['driver_config']['dh_cfg']['taxonomy'] = tx
-
-        eda_inst_obj = ExternalDatasetAgentInstance(name=name, dataset_driver_config=agt_cfg['driver_config'], dataset_agent_config=agt_cfg)
-
-        eda_id = self.object_dict['eda'][0]
-        dset_id = self.object_dict['dset'][0]
+        eda_id = obj_dict['eda'][0]
+        dset_id = obj_dict['dset'][0]
 
         eda_inst_id = self._dams_cli.create_external_dataset_agent_instance(eda_inst_obj, eda_id, dset_id)
-#        eda_inst_obj = self._rr_cli.read(eda_inst_id)
 
-        return eda_inst_id, eda_inst_obj
+        return eda_inst_id
 
     def _deorder_dict(self, odict):
         from pyon.core.object import walk

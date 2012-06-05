@@ -28,26 +28,24 @@ class TestRegistrationUtilityInt(IonIntegrationTestCase):
     def setUp(self):
         self._start_container()
         self.container.start_rel_from_url('res/deploy/r2deploy.yml')
+#        self.container.start_rel_from_url('res/deploy/r2deploy_no_bootstrap.yml')
         self._dams_cli = DataAcquisitionManagementServiceClient()
 
-    @unittest.skip('')
+#    @unittest.skip('')
     def test_external_dataset_registration_existing_objs(self):
         # Make a DatasetRegistration instance
         dreg=DatasetRegistration()
 
-        # Parse the objects to register from file(s)
-        objs=dreg.parse_dsreg('test_data/dataset_registration/dsreg_file_refs.yml')
-
         # Register the dataset - this creates and registers all objects EXCEPT the ExternalDatasetAgentInstance
-        dset_id, eda_id, dproducer_id, stream_id = dreg.register_dataset(*objs)
+        ds_obj_dict = dreg.register_dataset('dummy_1', 'test_data/dataset_registration/dummy_test.dsreg')
 
         # Register the dataset again - this should simply return the same ID's as the first time
-        dset_id2, eda_id2, dproducer_id2, stream_id2 = dreg.register_dataset(*objs)
+        ds_obj_dict2 = dreg.register_dataset('dummy_2', 'test_data/dataset_registration/dummy_test.dsreg')
 
-        self.assertEquals(dset_id, dset_id2)
-        self.assertEquals(eda_id, eda_id2)
-        self.assertEquals(dproducer_id, dproducer_id2)
-        self.assertEquals(stream_id, stream_id2)
+        self.assertEquals(ds_obj_dict['dset'][0], ds_obj_dict2['dset'][0])
+        self.assertEquals(ds_obj_dict['eda'][0], ds_obj_dict2['eda'][0])
+        self.assertEquals(ds_obj_dict['dproducer_id'], ds_obj_dict2['dproducer_id'])
+        self.assertEquals(ds_obj_dict['stream_id'], ds_obj_dict2['stream_id'])
 
 #    @unittest.skip('')
     def test_external_dataset_registration(self):
@@ -61,23 +59,17 @@ class TestRegistrationUtilityInt(IonIntegrationTestCase):
         # Make a DatasetRegistration instance
         dreg=DatasetRegistration()
 
-        # Parse the objects to register from file(s)
-        objs=dreg.parse_dsreg('test_data/dataset_registration/dsreg_file_refs.yml')
+        # Reference the particular configuration(s) for this dataset
+        obj_ref_file = 'test_data/dataset_registration/dummy_test.dsreg'
 
         # Register the dataset - this creates and registers all objects EXCEPT the ExternalDatasetAgentInstance
-        dset_id, eda_id, dproducer_id, stream_id = dreg.register_dataset(*objs)
-
-        # Reference the particular configuration(s) for this dataset
-        agent_config = 'test_data/dataset_registration/agent_config.yml'
-        taxonomy = 'test_data/dataset_registration/taxonomy.yml'
-
-        # Create the agent_instance
-        eda_inst_id, eda_inst_obj = dreg.make_agent_instance('dummy_eda_inst', agent_config, taxonomy)
+        dset_obj_dict = dreg.register_dataset('dummy_eda_inst', obj_ref_file)
 
         # Start the agent
-        pid = self._dams_cli.start_external_dataset_agent_instance(eda_inst_id)
+        pid = self._dams_cli.start_external_dataset_agent_instance(dset_obj_dict['eda_inst_id'])
 
-        ra_cli = ResourceAgentClient(dset_id, FakeProcess())
+        # Create a client to control the agent
+        ra_cli = ResourceAgentClient(dset_obj_dict['dset'][0], FakeProcess())
 
         # Get the current state (should be unintialized)
         retval=ra_cli.execute_agent(AgentCommand(command='get_current_state'))
@@ -99,7 +91,7 @@ class TestRegistrationUtilityInt(IonIntegrationTestCase):
             name='dummy_logger',
             module='ion.processes.data.stream_granule_logger',
             cls='StreamGranuleLogger',
-            config={'process':{'stream_id':stream_id}}
+            config={'process':{'stream_id':dset_obj_dict['stream_id']}}
         )
 
         # Get some data (repeat as much as you'd like)
