@@ -21,6 +21,8 @@ from interface.objects import AgentCommand, AgentCommandResult
 from pyon.ion.granule.taxonomy import TaxyTool
 from examples.eoi.registration_utility import DatasetRegistration, FakeProcess
 from interface.services.sa.idata_acquisition_management_service import DataAcquisitionManagementServiceClient
+from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
+from interface.objects import DataSource, DataSourceModel, ExternalDataProvider, ExternalDataset, ExternalDatasetModel,ExternalDatasetAgent, ExternalDatasetAgentInstance, DataProduct
 
 @attr('INT_EX',group='eoi')
 class TestRegistrationUtilityInt(IonIntegrationTestCase):
@@ -31,7 +33,7 @@ class TestRegistrationUtilityInt(IonIntegrationTestCase):
 #        self.container.start_rel_from_url('res/deploy/r2deploy_no_bootstrap.yml')
         self._dams_cli = DataAcquisitionManagementServiceClient()
 
-#    @unittest.skip('')
+    @unittest.skip('')
     def test_external_dataset_registration_existing_objs(self):
         # Make a DatasetRegistration instance
         dreg=DatasetRegistration()
@@ -50,7 +52,36 @@ class TestRegistrationUtilityInt(IonIntegrationTestCase):
 #    @unittest.skip('')
     def test_external_dataset_registration(self):
         cc = self.container
-        assertions = self.assertTrue
+
+        # Make a DatasetRegistration instance
+        dreg=DatasetRegistration()
+
+        # Reference the particular configuration(s) for this dataset
+        obj_ref_file = 'test_data/dataset_registration/dummy_test.dsreg'
+
+        # Register the dataset - this creates and registers all objects EXCEPT the ExternalDatasetAgentInstance
+        dset_obj_dict = dreg.register_dataset('dummy_agent_instance', obj_ref_file)
+
+        # Verify that all required objects are present in the resource registry
+        rr_cli = ResourceRegistryServiceClient()
+        objs = {
+            'dset':ExternalDataset,
+            'dset_mdl':ExternalDatasetModel,
+            'dsrc':DataSource,
+            'dsrc_mdl':DataSourceModel,
+            'eda':ExternalDatasetAgent,
+            'edp':ExternalDataProvider,
+            'dprod':DataProduct
+        }
+        for key, cls in objs.iteritems():
+            obj_id = dset_obj_dict[key][0]
+            obj = rr_cli.read(obj_id)
+            self.assertIsInstance(obj,cls)
+
+
+    @unittest.skip('')
+    def test_register_start_and_command_agent(self):
+        cc = self.container
 
         #-----------------------------
         # Copy below here to run as a script (don't forget the imports of course!)
