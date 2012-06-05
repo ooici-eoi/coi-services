@@ -307,8 +307,6 @@ class DatasetRegistration(object):
         if agt_cfg is None:
             raise Exception('\'agent_config\' must be either a valid configuration dict, or a path to a valid yaml file containing the configuration')
 
-        log.warn('Agent Config: {0}'.format(agt_cfg))
-
         tx = None
         if isinstance(taxonomy, str):
             log.error('taxonomy is a str: {0}'.format(taxonomy))
@@ -319,8 +317,6 @@ class DatasetRegistration(object):
 
         if tx is None:
             raise Exception('\'tx\' must be either a valid taxonomy dict, or a path to a valid yaml file containing the taxonomy')
-
-        log.warn('Taxonomy: {0}'.format(tx))
 
         if get_safe(agt_cfg, 'driver_config.dh_cfg.stream_id') is None:
             agt_cfg['driver_config']['dh_cfg']['stream_id'] = self.object_dict['stream_id']

@@ -6,6 +6,7 @@
 @author Christopher Mueller
 @brief 
 """
+from ion.agents.instrument.instrument_agent import InstrumentAgentState
 
 from pyon.util.int_test import IonIntegrationTestCase
 from nose.plugins.attrib import attr
@@ -66,28 +67,7 @@ class TestRegistrationUtilityInt(IonIntegrationTestCase):
         # Register the dataset - this creates and registers all objects EXCEPT the ExternalDatasetAgentInstance
         dset_id, eda_id, dproducer_id, stream_id = dreg.register_dataset(*objs)
 
-#        # Setup the particular configuration(s) for this dataset
-#        tx = TaxyTool()
-#        tx.add_taxonomy_set('data', 'external_data')
-#
-#        driver_config = {'dvr_mod' : 'ion.agents.data.handlers.base_data_handler', 'dvr_cls' : 'DummyDataHandler',}
-#        driver_config['dh_cfg'] = {
-#            'TESTING':True,
-#            'stream_id':stream_id,#TODO: This should probably be a 'stream_config' dict with stream_name:stream_id members
-#            'data_producer_id':dproducer_id,
-#            'taxonomy':tx.dump(), #TODO: Currently does not support sets
-#            'max_records':4,
-#            }
-#
-#        # Create agent config.
-#        agent_config = {
-#            'driver_config' : driver_config,
-#            'stream_config' : {},
-#            'agent'         : {'resource_id': ''},#resource_id set in 'dams.start_external_dataset_agent_instance'
-#            'test_mode' : True
-#        }
-#        taxonomy=tx.dump()
-
+        # Reference the particular configuration(s) for this dataset
         agent_config = 'test_data/dataset_registration/agent_config.yml'
         taxonomy = 'test_data/dataset_registration/taxonomy.yml'
 
@@ -102,6 +82,7 @@ class TestRegistrationUtilityInt(IonIntegrationTestCase):
         # Get the current state (should be unintialized)
         retval=ra_cli.execute_agent(AgentCommand(command='get_current_state'))
         log.info('Current state is: {0}'.format(retval.result))
+        self.assertEqual(retval.result, InstrumentAgentState.UNINITIALIZED)
 
         # Get the agent into observatory state
         retval=ra_cli.execute_agent(AgentCommand(command='initialize'))
@@ -111,6 +92,7 @@ class TestRegistrationUtilityInt(IonIntegrationTestCase):
         # Get the current state (should be observatory)
         retval=ra_cli.execute_agent(AgentCommand(command='get_current_state'))
         log.info('Current state is: {0}'.format(retval.result))
+        self.assertEqual(retval.result, InstrumentAgentState.OBSERVATORY)
 
         # Start a granule logger
         cc.spawn_process(
@@ -123,7 +105,11 @@ class TestRegistrationUtilityInt(IonIntegrationTestCase):
         # Get some data (repeat as much as you'd like)
         retval = ra_cli.execute(AgentCommand(command='acquire_data'))
 
-        # Try getting data twice "concurrently" - second is rejected
+        # Try getting data twice "concurrently" - second one is rejected
         retval = ra_cli.execute(AgentCommand(command='acquire_data'));retval = ra_cli.execute(AgentCommand(command='acquire_data'))
 
+        # Reset the agent to 'uninitialized'
         retval=ra_cli.execute_agent(AgentCommand(command='reset'))
+        retval=ra_cli.execute_agent(AgentCommand(command='get_current_state'))
+        log.info('Current state is: {0}'.format(retval.result))
+        self.assertEqual(retval.result, InstrumentAgentState.UNINITIALIZED)
