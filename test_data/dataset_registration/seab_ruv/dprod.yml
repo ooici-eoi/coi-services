@@ -1,0 +1,67 @@
+CDM_data_type: ''
+ISO_spatial_representation_type: ''
+contact:
+  address: ''
+  city: ''
+  country: ''
+  email: ''
+  name: ''
+  phone: ''
+  postalcode: ''
+  state: ''
+  type_: ContactInformation
+  variables:
+  - {name: '', value: ''}
+data_contact:
+  address: ''
+  city: ''
+  country: ''
+  email: ''
+  name: ''
+  phone: ''
+  postalcode: ''
+  state: ''
+  type_: ContactInformation
+  variables:
+  - {name: '', value: ''}
+data_format: {between_record_delimiter: '', character_set: '', description: '', format_version_identifier: '',
+  long_name: '', missing_value: '', name: '', nominal_sampling_rate_maximum: '', nominal_sampling_rate_minimum: '',
+  type_: DataFormat, unique_short_name: '', units: '', value_format: ''}
+data_product_level: ''
+data_quality_control_level: ''
+data_url: ''
+dataset_configuration_id: ''
+dataset_id: ''
+description: ''
+exclusive_rights_contact:
+  address: ''
+  city: ''
+  country: ''
+  email: ''
+  name: ''
+  phone: ''
+  postalcode: ''
+  state: ''
+  type_: ContactInformation
+  variables:
+  - {name: '', value: ''}
+exclusive_rights_end_date: ''
+exclusive_rights_notes: ''
+exclusive_rights_status: ''
+geospatial_bounds: {depthunits: '', depthverticalpositive: 0.0, geospatiallatmax: 0.0,
+  geospatiallatmin: 0.0, geospatiallatresolution: 0.0, geospatiallatunits: '', geospatiallonmax: 0.0,
+  geospatiallonmin: 0.0, geospatiallonresolution: 0.0, geospatiallonunits: '', geospatialverticalmax: 0.0,
+  geospatialverticalmin: 0.0, geospatialverticalpositive: 0.0, geospatialverticalresolution: 0.0,
+  geospatialverticalunits: '', maxbottomdepth: 0.0, minbottomdepth: 0.0, type_: GeospatialBounds}
+iso_topic_category: ''
+keywords: {}
+lcstate: DRAFT_PRIVATE
+license: ''
+license_URI: ''
+name: rutgers_ruv_seab_parsed_data_product
+provider_acknowledgement: ''
+provider_project: ''
+ts_created: ''
+ts_updated: ''
+type_: DataProduct
+version_status: ''

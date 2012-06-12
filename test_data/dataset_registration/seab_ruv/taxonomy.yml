@@ -1,0 +1,7 @@
+description: ''
+map:
+  0:
+  - data
+  - [external data, data]
+name: test_taxonomy
+type_: Taxonomy

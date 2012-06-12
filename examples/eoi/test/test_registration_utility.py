@@ -79,19 +79,15 @@ class TestRegistrationUtilityInt(IonIntegrationTestCase):
             self.assertIsInstance(obj,cls)
 
 
-    @unittest.skip('')
+#    @unittest.skip('')
     def test_register_start_and_command_agent(self):
         cc = self.container
-
-        #-----------------------------
-        # Copy below here to run as a script (don't forget the imports of course!)
-        #-----------------------------
 
         # Make a DatasetRegistration instance
         dreg=DatasetRegistration()
 
         # Reference the particular configuration(s) for this dataset
-        obj_ref_file = 'test_data/dataset_registration/dummy_test.dsreg'
+        obj_ref_file = 'test_data/dataset_registration/seab_ruv.dsreg'
 
         # Register the dataset - this creates and registers all objects EXCEPT the ExternalDatasetAgentInstance
         dset_obj_dict = dreg.register_dataset('dummy_eda_inst', obj_ref_file)
@@ -130,6 +126,8 @@ class TestRegistrationUtilityInt(IonIntegrationTestCase):
 
         # Try getting data twice "concurrently" - second one is rejected
         retval = ra_cli.execute(AgentCommand(command='acquire_data'));retval = ra_cli.execute(AgentCommand(command='acquire_data'))
+
+
 
         # Reset the agent to 'uninitialized'
         retval=ra_cli.execute_agent(AgentCommand(command='reset'))

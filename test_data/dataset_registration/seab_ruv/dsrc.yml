@@ -1,0 +1,20 @@
+connection_params: {}
+contact:
+  address: ''
+  city: ''
+  country: USA
+  email: ''
+  name: 'John Kerfoot'
+  phone: ''
+  postalcode: ''
+  state: NJ
+  type_: ContactInformation
+  variables:
+  - {name: '', value: ''}
+description: ''
+institution: {email: '', name: 'marine_rutgers', phone: '',
+  type_: Institution, website: 'http://marine.rutgers.edu'}
+name: marine_rutgers_dsrc
+protocol_type: ''
+type: ''
+type_: DataSource

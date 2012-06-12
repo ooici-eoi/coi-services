@@ -1,0 +1,16 @@
+contact:
+  address: ''
+  city: ''
+  country: ''
+  email: ''
+  name: 'John Kerfoot'
+  phone: ''
+  postalcode: ''
+  state: 'NJ'
+  type_: ContactInformation
+  variables:
+  - {name: '', value: ''}
+description: ''
+institution: {email: '', name: 'Rutgers', phone: '', type_: Institution, website: ''}
+name: rutgers_edp
+type_: ExternalDataProvider
