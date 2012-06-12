@@ -11,8 +11,8 @@ from pyon.util.containers import get_safe
 from pyon.ion.granule.taxonomy import TaxyTool
 from pyon.ion.granule.granule import build_granule
 from pyon.ion.granule.record_dictionary import RecordDictionaryTool
-from ion.agents.data.handlers.base_data_handler import BaseDataHandler
-from ion.agents.data.handlers.handler_utils import list_file_info, get_sbuffer
+from ion.agents.data.handlers.base_data_handler import BaseDataHandler, NoNewDataWarning
+from ion.agents.data.handlers.handler_utils import list_file_info, get_sbuffer, get_time_from_filename
 import numpy as np
 import re
 from StringIO import StringIO
@@ -42,32 +42,69 @@ class RuvDataHandler(BaseDataHandler):
 #        config['pattern'] = pattern
 
     @classmethod
-    def _new_data_constraints(cls, config):
+    def _constraints_for_new_request(cls, config):
         old_list = get_safe(config, 'new_data_check') or []
 
         ret = {}
         base_url = get_safe(config,'ds_params.base_url')
-        pattern = get_safe(config,'ds_params.pattern')
+        list_pattern = get_safe(config,'ds_params.list_pattern')
+        date_pattern = get_safe(config, 'ds_params.date_pattern')
+        date_extraction_pattern = get_safe(config, 'ds_params.date_extraction_pattern')
 
-        curr_list = list_file_info(base_url, pattern)
+        curr_list = list_file_info(base_url, list_pattern)
 
-        new_list = [x for x in curr_list if x not in old_list]
+        # Determine which files are new
+        new_list = [tuple(x) for x in curr_list if list(x) not in old_list]
 
+        if len(new_list) is 0:
+            raise NoNewDataWarning()
+
+        # The curr_list is the new new_data_check - used for the next "new data" evaluation
+        config['set_new_data_check'] = curr_list
+
+        # The new_list is the set of new files - these will be processed
         ret['new_files'] = new_list
+        ret['start_time'] = get_time_from_filename(new_list[0][0], date_extraction_pattern, date_pattern)
+        ret['end_time'] = get_time_from_filename(new_list[len(new_list) - 1][0], date_extraction_pattern, date_pattern)
+        ret['bounding_box'] = {}
+        ret['vars'] = []
 
         return ret
 
     @classmethod
+    def _constraints_for_historical_request(cls, config):
+        base_url = get_safe(config,'ds_params.base_url')
+        list_pattern = get_safe(config,'ds_params.list_pattern')
+        date_pattern = get_safe(config, 'ds_params.date_pattern')
+        date_extraction_pattern = get_safe(config, 'ds_params.date_extraction_pattern')
+
+        start_time = get_safe(config, 'constraints.start_time')
+        end_time = get_safe(config, 'constraints.end_time')
+
+        new_list = []
+        curr_list = list_file_info(base_url, list_pattern)
+
+        for x in curr_list:
+            curr_time = get_time_from_filename(x[0], date_extraction_pattern, date_pattern)
+            if start_time <= curr_time <= end_time:
+                new_list.append(x)
+
+        return {'new_files':new_list}
+
+    @classmethod
     def _get_data(cls, config):
         new_flst = get_safe(config, 'constraints.new_files', [])
-        log.debug('new_flist: {0}'.format(new_flst))
+#        log.debug('new_flist: {0}'.format(new_flst))
         for f in new_flst:
+            log.error('Processing File: {0}'.format(f))
             try:
                 parser = RuvParser(f[0])
 
-                log.warn('Header Info:\n{0}'.format(parser.header_map))
-                log.warn('Tables Available: {0}'.format(parser.table_map.keys()))
+#                log.info('Header Info:\n{0}'.format(parser.header_map))
+#                log.info('Tables Available:\n{0}'.format(parser.table_map.keys()))
 
+                #For now, yield nothing. We need to figure out what to do with the secondary tables
+                #before we can start building granules to send back.
                 yield []
 
             except RuvParseException as rpe:
